@@ -9,8 +9,14 @@ import 'summary_chip.dart';
 class AlertDetailView extends StatefulWidget {
   final Alert alert;
   final VoidCallback? onEdit;
+  final VoidCallback? onRefreshed;
 
-  const AlertDetailView({super.key, required this.alert, this.onEdit});
+  const AlertDetailView({
+    super.key,
+    required this.alert,
+    this.onEdit,
+    this.onRefreshed,
+  });
 
   @override
   State<AlertDetailView> createState() => _AlertDetailViewState();
@@ -198,7 +204,10 @@ class _AlertDetailViewState extends State<AlertDetailView> {
     final days = grouped.keys.toList()..sort();
 
     return RefreshIndicator(
-      onRefresh: _fetchForecast,
+      onRefresh: () async {
+        await _fetchForecast();
+        widget.onRefreshed?.call();
+      },
       child: ListView.builder(
         padding: const EdgeInsets.only(bottom: 24),
         itemCount: days.length,

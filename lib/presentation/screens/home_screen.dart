@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../core/alert_checker.dart';
 import '../../data/models/alert.dart';
 import '../../data/repositories/alert_repository.dart';
-import '../../data/repositories/auth_repository.dart';
 import '../widgets/alert_detail_view.dart';
 import '../widgets/create_alert_sheet.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String uid;
@@ -17,7 +18,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final _alertRepo = AlertRepository();
-  final _authRepo = AuthRepository();
   final List<Alert> _alerts = [];
   TabController? _tabController;
 
@@ -28,12 +28,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _loadAlerts() async {
-    final loaded = await _alertRepo.load(widget.uid);
-    if (loaded.isEmpty) return;
-    setState(() {
-      _alerts.addAll(loaded);
-      _tabController = TabController(length: _alerts.length, vsync: this);
-    });
+    try {
+      final loaded = await _alertRepo.load(widget.uid);
+      if (!mounted) return;
+      if (loaded.isEmpty) return;
+      setState(() {
+        _alerts.addAll(loaded);
+        _tabController = TabController(length: _alerts.length, vsync: this);
+      });
+      AlertChecker.checkAndNotify(_alerts);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al cargar las alertas: $e')),
+      );
+    }
+  }
+
+  Future<void> _saveAlerts() async {
+    try {
+      await _alertRepo.save(widget.uid, _alerts);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al guardar las alertas: $e')),
+      );
+    }
   }
 
   void _addAlert(Alert alert) {
@@ -46,7 +66,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         initialIndex: _alerts.length - 1,
       );
     });
-    _alertRepo.save(widget.uid, _alerts);
+    _saveAlerts();
+    AlertChecker.checkAndNotify(_alerts);
   }
 
   void _removeAlert(int index) {
@@ -64,7 +85,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         );
       }
     });
-    _alertRepo.save(widget.uid, _alerts);
+    _saveAlerts();
   }
 
   void _editAlert(int index, Alert alert) {
@@ -78,7 +99,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         initialIndex: currentIndex,
       );
     });
-    _alertRepo.save(widget.uid, _alerts);
+    _saveAlerts();
+    AlertChecker.checkAndNotify(_alerts);
   }
 
   void _openCreateSheet() {
@@ -102,10 +124,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Future<void> _signOut() async {
-    await _authRepo.signOut();
-  }
-
   @override
   void dispose() {
     _tabController?.dispose();
@@ -120,9 +138,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         title: const Text('Meteo Alert'),
         actions: [
           IconButton(
-            onPressed: _signOut,
-            icon: const Icon(Icons.logout),
-            tooltip: 'Cerrar sesión',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
+            icon: const Icon(Icons.settings),
+            tooltip: 'Ajustes',
           ),
         ],
         bottom: hasAlerts
@@ -163,6 +184,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 (i) => AlertDetailView(
                   alert: _alerts[i],
                   onEdit: () => _openEditSheet(i, _alerts[i]),
+                  onRefreshed: () => AlertChecker.checkAndNotify(_alerts),
                 ),
               ),
             )

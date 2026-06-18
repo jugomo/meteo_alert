@@ -1,12 +1,18 @@
 import 'dart:convert';
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 
 import '../models/alert.dart';
 
 class AlertRepository {
-  DatabaseReference _ref(String uid) =>
-      FirebaseDatabase.instance.ref('users/$uid/alertsJson');
+  static const _dbUrl =
+      'https://meteo-alert-409a8-default-rtdb.europe-west1.firebasedatabase.app';
+
+  DatabaseReference _ref(String uid) => FirebaseDatabase.instanceFor(
+        app: Firebase.app(),
+        databaseURL: _dbUrl,
+      ).ref('users/$uid/alertsJson');
 
   Future<List<Alert>> load(String uid) async {
     final snapshot = await _ref(uid).get();

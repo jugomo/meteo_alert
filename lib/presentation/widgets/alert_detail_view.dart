@@ -116,6 +116,21 @@ class _AlertDetailViewState extends State<AlertDetailView> {
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                     ),
                   ),
+                  IconButton(
+                    onPressed: _loading ? null : () async {
+                      await _fetchForecast();
+                      widget.onRefreshed?.call();
+                    },
+                    icon: _loading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.refresh, size: 18),
+                    visualDensity: VisualDensity.compact,
+                    tooltip: 'Actualizar',
+                  ),
                   if (widget.onEdit != null)
                     IconButton(
                       onPressed: widget.onEdit,

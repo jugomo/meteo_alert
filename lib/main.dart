@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'app.dart';
@@ -12,10 +13,11 @@ void main() async {
 
   try {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-    FirebaseDatabase.instanceFor(
+    final db = FirebaseDatabase.instanceFor(
       app: Firebase.app(),
       databaseURL: 'https://meteo-alert-409a8-default-rtdb.europe-west1.firebasedatabase.app',
-    ).setPersistenceEnabled(true);
+    );
+    if (!kIsWeb) db.setPersistenceEnabled(true);
   } on FirebaseException catch (e) {
     if (e.code != 'duplicate-app') rethrow;
   }

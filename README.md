@@ -12,15 +12,23 @@ Flutter app that monitors weather forecasts and notifies when wind speed, temper
 - **Cloud persistence** — alerts are stored in Firebase Realtime Database and synced across devices.
 - **Local persistence** — alerts are also cached in `SharedPreferences` and restored on next launch.
 - **Pull-to-refresh** — swipe down on the detail view to refresh the forecast.
+- **Push notifications** — a local notification is fired when any threshold will be exceeded in the next hour; platform-specific implementations for native and web.
+- **Dark / light mode** — theme preference toggled from the settings screen and persisted locally.
+- **Settings screen** — dark mode switch, sign-out action, and an About tab with app and API info.
 
 ## Project structure
 
 ```
 lib/
 ├── main.dart                        # Entry point (runApp only)
-├── app.dart                         # MaterialApp + theme
+├── app.dart                         # MaterialApp + theme + ThemeNotifier wiring
 ├── firebase_options.dart            # Generated Firebase configuration
 ├── core/
+│   ├── alert_checker.dart           # Checks forecasts and triggers local notifications
+│   ├── notification_service.dart    # Conditional export (native / web)
+│   ├── notification_service_native.dart  # flutter_local_notifications implementation
+│   ├── notification_service_web.dart     # Web Notification API implementation
+│   ├── theme_notifier.dart          # ValueNotifier<ThemeMode> with SharedPreferences
 │   └── constants/
 │       └── countries.dart           # Country list and ISO codes
 ├── data/
@@ -35,6 +43,7 @@ lib/
 └── presentation/
     ├── screens/
     │   ├── home_screen.dart         # Main screen with TabBar
+    │   ├── settings_screen.dart     # Dark mode, sign out, About
     │   └── auth_screen.dart         # Login / registration screen
     └── widgets/
         ├── alert_detail_view.dart   # Forecast view per alert
@@ -58,10 +67,12 @@ Both APIs are free and require no API key.
 | Package | Purpose |
 |---|---|
 | `http` | Requests to Open-Meteo APIs |
-| `shared_preferences` | Local alert persistence |
+| `shared_preferences` | Local alert persistence and theme preference |
 | `firebase_core` | Firebase initialization |
 | `firebase_auth` | User authentication |
 | `firebase_database` | Cloud alert storage (Realtime Database) |
+| `flutter_local_notifications` | Local push notifications (native platforms) |
+| `web` | Web Notification API access (web platform) |
 
 ## Getting started
 

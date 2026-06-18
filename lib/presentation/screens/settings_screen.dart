@@ -86,6 +86,9 @@ class _SettingsTab extends StatelessWidget {
             );
             if (confirmed == true) {
               await AuthRepository().signOut();
+              if (context.mounted) {
+                Navigator.of(context).popUntil((route) => route.isFirst);
+              }
             }
           },
         ),

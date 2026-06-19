@@ -1,56 +1,56 @@
 {
-  "flutter": {
-    "platforms": {
-      "android": {
-        "default": {
-          "projectId": "meteo-alert-409a8",
-          "appId": "1:788193788911:android:d6845d75105d7bc4a2ec1a",
-          "fileOutput": "android/app/google-services.json"
+    "flutter": {
+        "platforms": {
+            "android": {
+                "default": {
+                    "projectId": "meteo-alert-409a8",
+                    "appId": "1:788193788911:android:c169af226123c139a2ec1a",
+                    "fileOutput": "android/app/google-services.json"
+                }
+            },
+            "ios": {
+                "default": {
+                    "projectId": "meteo-alert-409a8",
+                    "appId": "1:788193788911:ios:3ad283dbf93eda3fa2ec1a",
+                    "uploadDebugSymbols": false,
+                    "fileOutput": "ios/Runner/GoogleService-Info.plist"
+                }
+            },
+            "macos": {
+                "default": {
+                    "projectId": "meteo-alert-409a8",
+                    "appId": "1:788193788911:ios:581ad518065c0012a2ec1a",
+                    "uploadDebugSymbols": false,
+                    "fileOutput": "macos/Runner/GoogleService-Info.plist"
+                }
+            },
+            "dart": {
+                "lib/firebase_options.dart": {
+                    "projectId": "meteo-alert-409a8",
+                    "configurations": {
+                        "android": "1:788193788911:android:c169af226123c139a2ec1a",
+                        "ios": "1:788193788911:ios:3ad283dbf93eda3fa2ec1a",
+                        "macos": "1:788193788911:ios:581ad518065c0012a2ec1a",
+                        "web": "1:788193788911:web:fecaf63f0907d703a2ec1a",
+                        "windows": "1:788193788911:web:53bf203f63f0abc0a2ec1a"
+                    }
+                }
+            }
         }
-      },
-      "ios": {
-        "default": {
-          "projectId": "meteo-alert-409a8",
-          "appId": "1:788193788911:ios:581ad518065c0012a2ec1a",
-          "uploadDebugSymbols": false,
-          "fileOutput": "ios/Runner/GoogleService-Info.plist"
-        }
-      },
-      "macos": {
-        "default": {
-          "projectId": "meteo-alert-409a8",
-          "appId": "1:788193788911:ios:581ad518065c0012a2ec1a",
-          "uploadDebugSymbols": false,
-          "fileOutput": "macos/Runner/GoogleService-Info.plist"
-        }
-      },
-      "dart": {
-        "lib/firebase_options.dart": {
-          "projectId": "meteo-alert-409a8",
-          "configurations": {
-            "android": "1:788193788911:android:d6845d75105d7bc4a2ec1a",
-            "ios": "1:788193788911:ios:581ad518065c0012a2ec1a",
-            "macos": "1:788193788911:ios:581ad518065c0012a2ec1a",
-            "web": "1:788193788911:web:fecaf63f0907d703a2ec1a",
-            "windows": "1:788193788911:web:53bf203f63f0abc0a2ec1a"
-          }
-        }
-      }
+    },
+    "hosting": {
+        "site": "meteoalert",
+        "public": "build/web",
+        "ignore": [
+            "firebase.json",
+            "**/.*",
+            "**/node_modules/**"
+        ],
+        "rewrites": [
+            {
+                "source": "**",
+                "destination": "/index.html"
+            }
+        ]
     }
-  },
-  "hosting": {
-    "site": "meteoalert",
-    "public": "build/web",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ]
-  }
 }

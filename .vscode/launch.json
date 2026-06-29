@@ -7,19 +7,22 @@
         {
             "name": "meteo_alert",
             "request": "launch",
-            "type": "dart"
+            "type": "dart",
+            "cwd": "${workspaceFolder}/app"
         },
         {
             "name": "meteo_alert (profile mode)",
             "request": "launch",
             "type": "dart",
-            "flutterMode": "profile"
+            "flutterMode": "profile",
+            "cwd": "${workspaceFolder}/app"
         },
         {
             "name": "meteo_alert (release mode)",
             "request": "launch",
             "type": "dart",
-            "flutterMode": "release"
+            "flutterMode": "release",
+            "cwd": "${workspaceFolder}/app"
         }
     ]
 }

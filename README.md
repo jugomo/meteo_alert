@@ -1,6 +1,6 @@
 # Meteo Alert
 
-Flutter app that monitors weather forecasts and notifies when wind speed, temperature, or rain probability thresholds are about to be exceeded.
+Monorepo with a Flutter app and an AWS Lambda microservice that together monitor weather forecasts and notify users when wind speed, temperature, or rain probability thresholds are about to be exceeded.
 
 ## Repository structure
 
@@ -9,6 +9,34 @@ meteo_alert/
 ├── app/        # Flutter application
 └── lambda/     # AWS Lambda microservice (server-side alert checker)
 ```
+
+## Overall architecture
+
+```
+┌──────────────────────┐                   ┌──────────────────────┐
+│     Flutter app        │                   │     AWS Lambda          │
+│       (app/)             │                   │      (lambda/)            │
+│                           │                   │                           │
+│  local alert checks      │                   │  hourly EventBridge      │
+│  + push notification UI  │                   │  cron → checks alerts    │
+└───────────┬───────────────┘                   └────────────┬──────────────┘
+            │                                                 │
+            │ read/write alerts                                │ read alerts
+            │ register FCM token                                │ send FCM push
+            ▼                                                 ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                     Firebase (Auth · RTDB · FCM)                          │
+└────────────────────────────────────────────────────────────────────────┘
+            ▲                                                 ▲
+            │                  forecast + geocoding             │
+            └────────────────────────┬────────────────────────┘
+                                      ▼
+                         ┌──────────────────────────┐
+                         │      Open-Meteo API          │
+                         └──────────────────────────┘
+```
+
+The app and the Lambda both read/write alerts in Firebase RTDB and query Open-Meteo independently; the Lambda is what makes alerts fire even when the app is closed, by pushing notifications through FCM.
 
 ---
 
@@ -131,13 +159,13 @@ A serverless function that runs every hour on AWS, checks all user alerts agains
 ### Architecture
 
 ```
-EventBridge (cron: every 1h)
+EventBridge (cron: every hour, on the hour, UTC)
         │
         ▼
   AWS Lambda (Python)
         │
         ├── Firebase RTDB  →  read all users + alerts + FCM tokens
-        ├── Open-Meteo API →  fetch hourly forecast per location
+        ├── Open-Meteo API →  fetch hourly forecast per location (UTC)
         └── Firebase FCM   →  send push notification if threshold exceeded
 ```
 
@@ -146,10 +174,10 @@ EventBridge (cron: every 1h)
 | Service | Free tier | Usage |
 |---|---|---|
 | Lambda invocations | 1 M / month | 24 × 30 = **720 / month** |
-| Lambda compute | 400 000 GB-s / month | ~1 800 GB-s / month |
+| Lambda compute | 400 000 GB-s / month | ~117 GB-s / month (256 MB, ~0.65 s avg duration) |
 | EventBridge scheduled rule | Free | 1 rule |
 
-**Total: $0 / month.** Firebase credentials are stored as a Lambda environment variable — no Secrets Manager needed.
+**Total: $0 / month.** This is a tiny fraction of the Lambda "Always Free" tier, which never expires (unlike the 12-month trial that covers services like EC2 or RDS). Firebase credentials are stored as a Lambda environment variable — no Secrets Manager needed.
 
 ### Prerequisites
 
@@ -192,7 +220,7 @@ The script handles everything on first run and subsequent updates:
 2. Packages `index.py` + dependencies into `function.zip`
 3. Creates the IAM execution role (`meteo-alert-lambda-role`) if it does not exist
 4. Creates or updates the Lambda function (`meteo-alert-checker`) with the Firebase credentials as environment variables
-5. Creates the EventBridge rule (`meteo-alert-hourly`) that triggers every hour
+5. Creates or updates the EventBridge rule (`meteo-alert-hourly`, `cron(0 * * * ? *)`) so it fires every hour on the hour (UTC) — reconciled on every deploy, even if the rule already exists
 6. Wires the rule to the Lambda function
 
 ### Test and logs
@@ -204,6 +232,30 @@ aws lambda invoke --function-name meteo-alert-checker --region eu-west-1 /tmp/ou
 # Stream logs
 aws logs tail /aws/lambda/meteo-alert-checker --follow --region eu-west-1
 
-# See detail
-aws events describe-rule --name "meteo-alert-hourly" --region "${AWS_DEFAULT_REGION:-eu-west-1}" 2>&1
+# Inspect the EventBridge schedule (rate vs cron, enabled/disabled)
+aws events describe-rule --name meteo-alert-hourly --region eu-west-1
+
+# List recent invocations (useful to check actual execution times / offset)
+aws logs describe-log-streams --log-group-name /aws/lambda/meteo-alert-checker \
+  --region eu-west-1 --order-by LastEventTime --descending --max-items 5
+
+# Average / max duration over the last 30 days (for free tier estimates)
+aws cloudwatch get-metric-statistics \
+  --namespace AWS/Lambda --metric-name Duration \
+  --dimensions Name=FunctionName,Value=meteo-alert-checker \
+  --start-time "$(date -u -v-30d '+%Y-%m-%dT%H:%M:%S')" \
+  --end-time "$(date -u '+%Y-%m-%dT%H:%M:%S')" \
+  --period 2592000 --statistics Average Maximum SampleCount \
+  --region eu-west-1
+
+# Dump current users + alerts from Firebase RTDB (needs: pip3 install firebase_admin)
+cd lambda && python3 -c "
+import firebase_admin
+from firebase_admin import credentials, db
+cred = credentials.Certificate('firebase-service-account.json')
+firebase_admin.initialize_app(cred, {'databaseURL': 'https://meteo-alert-409a8-default-rtdb.europe-west1.firebasedatabase.app'})
+users = db.reference('users').get()
+for uid, data in (users or {}).items():
+    print(uid, 'fcmToken:', bool(data.get('fcmToken')), data.get('alertsJson'))
+"
 ```

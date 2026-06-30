@@ -52,10 +52,88 @@ class _SettingsTab extends StatelessWidget {
     ).ref('users/$uid/fcmToken');
     if (value) {
       final token = await FirebaseMessaging.instance.getToken();
-      if (token != null) await ref.set(token);
+      if (token != null) {
+        debugPrint('[FCM] Enviando token al servidor: $token');
+        await ref.set(token);
+      }
     } else {
       await ref.remove();
     }
+  }
+
+  Future<bool> _showDeleteWithPasswordDialog(BuildContext context) async {
+    final controller = TextEditingController();
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        String? errorText;
+        bool isLoading = false;
+
+        return StatefulBuilder(
+          builder: (ctx, setState) => AlertDialog(
+            title: const Text('Confirmar eliminación'),
+            content: isLoading
+                ? const SizedBox(
+                    height: 72,
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Introduce tu contraseña para confirmar.'),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: controller,
+                        obscureText: true,
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          labelText: 'Contraseña',
+                          errorText: errorText,
+                        ),
+                      ),
+                    ],
+                  ),
+            actions: isLoading
+                ? null
+                : [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Cancelar'),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        if (controller.text.isEmpty) return;
+                        setState(() {
+                          isLoading = true;
+                          errorText = null;
+                        });
+                        try {
+                          await AuthRepository()
+                              .deleteAccount(controller.text);
+                          if (ctx.mounted) Navigator.pop(ctx, true);
+                        } on FirebaseAuthException catch (e) {
+                          setState(() {
+                            isLoading = false;
+                            errorText = e.code == 'wrong-password' ||
+                                    e.code == 'invalid-credential'
+                                ? 'Contraseña incorrecta'
+                                : 'Error al eliminar. Inténtalo de nuevo.';
+                          });
+                        }
+                      },
+                      child: const Text(
+                        'Eliminar',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  ],
+          ),
+        );
+      },
+    );
+    return result == true;
   }
 
   @override
@@ -104,7 +182,19 @@ class _SettingsTab extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 24),
+        const Divider(),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          child: Text(
+            'Usuario: ${FirebaseAuth.instance.currentUser?.email ?? ''}',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          ),
+        ),
+        const SizedBox(height: 8),
         ListTile(
           leading: const Icon(Icons.logout, color: Colors.red),
           title: const Text(
@@ -143,6 +233,47 @@ class _SettingsTab extends StatelessWidget {
               }
             }
           },
+        ),
+        const SizedBox(height: 4),
+        TextButton(
+          onPressed: () async {
+            final confirmed = await showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: const Text('Eliminar cuenta'),
+                content: const Text(
+                  '¿Seguro que quieres eliminar tu cuenta?\n\n'
+                  'Se eliminarán todas tus alertas y datos asociados. '
+                  'Esta acción no se puede deshacer.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Cancelar'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: const Text(
+                      'Continuar',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ),
+                ],
+              ),
+            );
+            if (confirmed == true && context.mounted) {
+              final deleted = await _showDeleteWithPasswordDialog(context);
+              if (deleted && context.mounted) {
+                Navigator.of(context).popUntil((route) => route.isFirst);
+              }
+            }
+          },
+          style: TextButton.styleFrom(
+            foregroundColor: Colors.red,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            alignment: Alignment.centerLeft,
+          ),
+          child: const Text('Eliminar cuenta'),
         ),
       ],
     );

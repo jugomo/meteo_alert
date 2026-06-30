@@ -1,6 +1,11 @@
+import 'dart:async';
+
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/alert_checker.dart';
+import '../../core/notification_prefs.dart';
+import '../../core/notification_service.dart';
 import '../../data/models/alert.dart';
 import '../../data/repositories/alert_repository.dart';
 import '../widgets/alert_detail_view.dart';
@@ -20,11 +25,35 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final _alertRepo = AlertRepository();
   final List<Alert> _alerts = [];
   TabController? _tabController;
+  StreamSubscription<RemoteMessage>? _fcmSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadAlerts();
+    _fcmSubscription = FirebaseMessaging.onMessage.listen(_onForegroundMessage);
+  }
+
+  void _onForegroundMessage(RemoteMessage message) {
+    if (!notificationPrefs.push.value) return;
+    final title = message.notification?.title ?? 'Meteo Alert';
+    final body = message.notification?.body ?? '';
+    NotificationService.show(id: message.hashCode, title: title, body: body);
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.cloud, size: 36),
+        title: Text(title),
+        content: Text(body),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadAlerts() async {
@@ -126,6 +155,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _fcmSubscription?.cancel();
     _tabController?.dispose();
     super.dispose();
   }

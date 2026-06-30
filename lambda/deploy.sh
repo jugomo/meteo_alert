@@ -110,19 +110,13 @@ else
 fi
 
 # ── EventBridge rule ──────────────────────────────────────────────────────────
-log "Checking EventBridge rule..."
-RULE_ARN=$(aws events describe-rule --name "$RULE_NAME" --region "$REGION" \
-  --query 'Arn' --output text 2>/dev/null || echo "")
-
-if [[ -z "$RULE_ARN" ]]; then
-  log "Creating EventBridge rule (every 1 hour)..."
-  RULE_ARN=$(aws events put-rule \
-    --name "$RULE_NAME" \
-    --schedule-expression "rate(1 hour)" \
-    --state ENABLED \
-    --region "$REGION" \
-    --query 'RuleArn' --output text)
-fi
+log "Creating/updating EventBridge rule (every hour, on the hour, GMT)..."
+RULE_ARN=$(aws events put-rule \
+  --name "$RULE_NAME" \
+  --schedule-expression "cron(0 * * * ? *)" \
+  --state ENABLED \
+  --region "$REGION" \
+  --query 'RuleArn' --output text)
 
 # Allow EventBridge to invoke Lambda (idempotent: ignore if already exists)
 aws lambda add-permission \
@@ -144,7 +138,7 @@ echo ""
 echo -e "${GREEN}✓ Deploy complete!${NC}"
 echo ""
 echo "  Function : $FUNCTION_ARN"
-echo "  Schedule : every 1 hour"
+echo "  Schedule : every hour, on the hour (GMT)"
 echo "  Region   : $REGION"
 echo ""
 echo "Test now:"

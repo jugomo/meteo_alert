@@ -25,7 +25,7 @@ def _fetch_weather(latitude: float, longitude: float, forecast_days: int) -> dic
         "https://api.open-meteo.com/v1/forecast"
         f"?latitude={latitude}&longitude={longitude}"
         "&hourly=temperature_2m,precipitation_probability,windspeed_10m"
-        f"&forecast_days={forecast_days}&timezone=auto"
+        f"&forecast_days={forecast_days}&timezone=UTC"
     )
     response = requests.get(url, timeout=10)
     response.raise_for_status()
@@ -40,18 +40,17 @@ def _check_alert(alert: dict, weather: dict) -> list[str]:
     winds = hourly["windspeed_10m"]
     rains = hourly["precipitation_probability"]
 
-    now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    # Open-Meteo returns times in UTC (timezone=UTC), naive, on the hour
+    now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0, tzinfo=None)
 
     exceeded_temp = False
     exceeded_wind = False
     exceeded_rain = False
 
     for i, time_str in enumerate(times):
-        # Open-Meteo returns local time (timezone=auto), parse as naive then compare by hour
         hour_dt = datetime.fromisoformat(time_str)
-        # Only check the upcoming hour window
-        now_naive = datetime.now().replace(minute=0, second=0, microsecond=0)
-        if hour_dt < now_naive or hour_dt > now_naive.replace(hour=now_naive.hour + 1) if now_naive.hour < 23 else now_naive:
+        # Only check the current hour's forecast
+        if hour_dt != now:
             continue
 
         t = float(temps[i]) if temps[i] is not None else 0.0

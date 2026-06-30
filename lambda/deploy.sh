@@ -31,15 +31,14 @@ aws sts get-caller-identity >/dev/null || die "AWS credentials not configured. R
 
 [[ -f "$SA_FILE" ]] || die "Missing firebase-service-account.json in lambda/\n  → Firebase Console → Project settings → Service accounts → Generate new private key"
 
-SA_JSON=$(cat "$SA_FILE" | python3 -c "import sys,json; print(json.dumps(json.load(sys.stdin)))")
 
 # ── Build zip ─────────────────────────────────────────────────────────────────
 log "Building deployment package..."
 rm -rf "$BUILD_DIR" "$ZIP_PATH"
 mkdir -p "$BUILD_DIR"
 pip3 install -r "$SCRIPT_DIR/requirements.txt" -t "$BUILD_DIR" -q \
-  --platform manylinux2014_x86_64 --only-binary=:all: 2>/dev/null \
-  || pip3 install -r "$SCRIPT_DIR/requirements.txt" -t "$BUILD_DIR" -q
+  --platform manylinux2014_x86_64 --only-binary=:all: \
+  --python-version 3.12 --implementation cp
 cp "$SCRIPT_DIR/index.py" "$BUILD_DIR/"
 (cd "$BUILD_DIR" && zip -r "$ZIP_PATH" . -q)
 SIZE=$(du -sh "$ZIP_PATH" | cut -f1)
@@ -67,7 +66,12 @@ else
 fi
 
 # ── Lambda ────────────────────────────────────────────────────────────────────
-ENV_VARS="Variables={FIREBASE_SERVICE_ACCOUNT=$SA_JSON,FIREBASE_DATABASE_URL=$DB_URL}"
+ENV_JSON=$(python3 -c "
+import json
+with open('$SA_FILE') as f:
+    sa = json.load(f)
+print(json.dumps({'Variables': {'FIREBASE_SERVICE_ACCOUNT': json.dumps(sa), 'FIREBASE_DATABASE_URL': '$DB_URL'}}))"
+)
 
 FUNCTION_EXISTS=$(aws lambda get-function --function-name "$FUNCTION_NAME" \
   --region "$REGION" --query 'Configuration.FunctionArn' --output text 2>/dev/null || echo "")
@@ -82,7 +86,7 @@ if [[ -z "$FUNCTION_EXISTS" ]]; then
     --zip-file "fileb://$ZIP_PATH" \
     --timeout "$TIMEOUT" \
     --memory-size "$MEMORY" \
-    --environment "$ENV_VARS" \
+    --environment "$ENV_JSON" \
     --region "$REGION" \
     --query 'FunctionArn' --output text)
   log "Lambda created: $FUNCTION_ARN"
@@ -99,7 +103,7 @@ else
     --function-name "$FUNCTION_NAME" \
     --timeout "$TIMEOUT" \
     --memory-size "$MEMORY" \
-    --environment "$ENV_VARS" \
+    --environment "$ENV_JSON" \
     --region "$REGION" >/dev/null
   FUNCTION_ARN="$FUNCTION_EXISTS"
   log "Lambda updated."

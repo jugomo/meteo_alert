@@ -203,4 +203,7 @@ aws lambda invoke --function-name meteo-alert-checker --region eu-west-1 /tmp/ou
 
 # Stream logs
 aws logs tail /aws/lambda/meteo-alert-checker --follow --region eu-west-1
+
+# See detail
+aws events describe-rule --name "meteo-alert-hourly" --region "${AWS_DEFAULT_REGION:-eu-west-1}" 2>&1
 ```

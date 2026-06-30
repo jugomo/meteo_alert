@@ -13,26 +13,26 @@ meteo_alert/
 ## Overall architecture
 
 ```
-┌──────────────────────┐                   ┌──────────────────────┐
-│     Flutter app        │                   │     AWS Lambda          │
-│       (app/)             │                   │      (lambda/)            │
-│                           │                   │                           │
-│  local alert checks      │                   │  hourly EventBridge      │
-│  + push notification UI  │                   │  cron → checks alerts    │
-└───────────┬───────────────┘                   └────────────┬──────────────┘
-            │                                                 │
-            │ read/write alerts                                │ read alerts
-            │ register FCM token                                │ send FCM push
-            ▼                                                 ▼
+┌──────────────────────────┐                   ┌───────────────────────┐
+│     Flutter app          │                   │     AWS Lambda        │
+│       (app/)             │                   │      (lambda/)        │
+│                          │                   │                       │
+│  local alert checks      │                   │  hourly EventBridge   │
+│  + push notification UI  │                   │  cron → checks alerts │
+└───────────┬──────────────┘                   └────────────┬──────────┘
+            │                                               │
+            │ read/write alerts                             │ read alerts
+            │ register FCM token                            │ send FCM push
+            ▼                                               ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│                     Firebase (Auth · RTDB · FCM)                          │
+│                     Firebase (Auth · RTDB · FCM)                       │
 └────────────────────────────────────────────────────────────────────────┘
             ▲                                                 ▲
-            │                  forecast + geocoding             │
+            │                  forecast + geocoding           │
             └────────────────────────┬────────────────────────┘
-                                      ▼
+                                     ▼
                          ┌──────────────────────────┐
-                         │      Open-Meteo API          │
+                         │      Open-Meteo API      │
                          └──────────────────────────┘
 ```
 

@@ -16,6 +16,7 @@ Future<void> _saveFcmToken(String uid) async {
   try {
     final token = await FirebaseMessaging.instance.getToken();
     if (token == null) return;
+    debugPrint('[FCM] Enviando token al servidor: $token');
     await FirebaseDatabase.instanceFor(
       app: Firebase.app(),
       databaseURL: _dbUrl,

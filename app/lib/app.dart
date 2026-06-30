@@ -4,6 +4,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 
+import 'core/notification_prefs.dart';
 import 'core/theme_notifier.dart';
 import 'presentation/screens/auth_screen.dart';
 import 'presentation/screens/home_screen.dart';
@@ -55,7 +56,7 @@ class MeteoAlertApp extends StatelessWidget {
               }
               final user = snapshot.data;
               if (user == null) return const AuthScreen();
-              _saveFcmToken(user.uid);
+              if (notificationPrefs.push.value) _saveFcmToken(user.uid);
               return HomeScreen(uid: user.uid);
             },
           ),

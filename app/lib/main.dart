@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'app.dart';
+import 'core/notification_prefs.dart';
 import 'core/notification_service.dart';
 import 'core/theme_notifier.dart';
 import 'firebase_options.dart';
@@ -22,6 +23,7 @@ void main() async {
     if (e.code != 'duplicate-app') rethrow;
   }
   await themeNotifier.init();
+  await notificationPrefs.init();
   await NotificationService.init();
   runApp(const MeteoAlertApp());
 }

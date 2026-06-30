@@ -1,7 +1,15 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/notification_prefs.dart';
 import '../../core/theme_notifier.dart';
 import '../../data/repositories/auth_repository.dart';
+
+const _dbUrl =
+    'https://meteo-alert-409a8-default-rtdb.europe-west1.firebasedatabase.app';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -34,6 +42,22 @@ class SettingsScreen extends StatelessWidget {
 class _SettingsTab extends StatelessWidget {
   const _SettingsTab();
 
+  Future<void> _onPushChanged(bool value) async {
+    await notificationPrefs.setPush(value);
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final ref = FirebaseDatabase.instanceFor(
+      app: Firebase.app(),
+      databaseURL: _dbUrl,
+    ).ref('users/$uid/fcmToken');
+    if (value) {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null) await ref.set(token);
+    } else {
+      await ref.remove();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListView(
@@ -47,6 +71,34 @@ class _SettingsTab extends StatelessWidget {
             title: const Text('Modo oscuro'),
             value: mode == ThemeMode.dark,
             onChanged: (_) => themeNotifier.toggle(),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        ValueListenableBuilder<bool>(
+          valueListenable: notificationPrefs.local,
+          builder: (context, enabled, _) => SwitchListTile(
+            secondary: const Icon(Icons.notifications_active),
+            title: const Text('Notificaciones locales'),
+            subtitle: const Text('Alertas generadas por la app'),
+            value: enabled,
+            onChanged: notificationPrefs.setLocal,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        ValueListenableBuilder<bool>(
+          valueListenable: notificationPrefs.push,
+          builder: (context, enabled, _) => SwitchListTile(
+            secondary: const Icon(Icons.cloud_outlined),
+            title: const Text('Notificaciones push'),
+            subtitle: const Text('Alertas enviadas desde el servidor'),
+            value: enabled,
+            onChanged: _onPushChanged,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),

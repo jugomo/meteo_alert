@@ -1,11 +1,13 @@
 import '../data/models/alert.dart';
 import '../data/repositories/weather_repository.dart';
+import 'notification_prefs.dart';
 import 'notification_service.dart';
 
 class AlertChecker {
   static final _weatherRepo = WeatherRepository();
 
   static Future<void> checkAndNotify(List<Alert> alerts) async {
+    if (!notificationPrefs.local.value) return;
     try {
       await Future.wait([
         for (int i = 0; i < alerts.length; i++) _check(i, alerts[i]),

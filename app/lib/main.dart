@@ -5,9 +5,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'app.dart';
+import 'core/aemet_config.dart';
 import 'core/notification_prefs.dart';
 import 'core/notification_service.dart';
 import 'core/theme_notifier.dart';
+import 'core/weather_provider_prefs.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -25,6 +27,8 @@ void main() async {
   }
   await themeNotifier.init();
   await notificationPrefs.init();
+  await weatherProviderPrefs.init();
+  await AemetConfig.load();
   await NotificationService.init();
   if (!kIsWeb) {
     await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(

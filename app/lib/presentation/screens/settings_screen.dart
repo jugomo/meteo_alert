@@ -5,8 +5,11 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import '../../core/aemet_config.dart';
 import '../../core/notification_prefs.dart';
 import '../../core/theme_notifier.dart';
+import '../../core/weather_provider_prefs.dart';
+import '../../data/models/alert.dart';
 import '../../data/repositories/auth_repository.dart';
 
 const _dbUrl =
@@ -184,6 +187,53 @@ class _SettingsTab extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 24),
+        const Divider(),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            'Proveedor meteorológico',
+            style: Theme.of(context)
+                .textTheme
+                .titleSmall
+                ?.copyWith(fontWeight: FontWeight.bold),
+          ),
+        ),
+        const SizedBox(height: 8),
+        ValueListenableBuilder<WeatherProvider>(
+          valueListenable: weatherProviderPrefs.provider,
+          builder: (context, provider, _) => RadioGroup<WeatherProvider>(
+            groupValue: provider,
+            onChanged: (v) => weatherProviderPrefs.setProvider(v!),
+            child: Column(
+              children: [
+                RadioListTile<WeatherProvider>(
+                  title: const Text('Open-Meteo'),
+                  subtitle: const Text('Datos globales, cobertura mundial'),
+                  value: WeatherProvider.openMeteo,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                RadioListTile<WeatherProvider>(
+                  title: const Text('AEMET OpenData'),
+                  subtitle: Text(
+                    AemetConfig.isAvailable
+                        ? 'Predicción oficial (solo España)'
+                        : 'No disponible actualmente',
+                  ),
+                  value: WeatherProvider.aemet,
+                  enabled: AemetConfig.isAvailable,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
         const Divider(),
         const SizedBox(height: 8),
         Padding(

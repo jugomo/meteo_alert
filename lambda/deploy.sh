@@ -16,6 +16,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="$SCRIPT_DIR/.build"
 ZIP_PATH="$SCRIPT_DIR/function.zip"
 SA_FILE="$SCRIPT_DIR/firebase-service-account.json"
+AEMET_KEY_FILE="$SCRIPT_DIR/aemet-api-key.txt"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
@@ -30,6 +31,13 @@ command -v python3 >/dev/null || die "python3 not found."
 aws sts get-caller-identity >/dev/null || die "AWS credentials not configured. Run: aws configure"
 
 [[ -f "$SA_FILE" ]] || die "Missing firebase-service-account.json in lambda/\n  → Firebase Console → Project settings → Service accounts → Generate new private key"
+
+if [[ -f "$AEMET_KEY_FILE" ]]; then
+  AEMET_API_KEY="$(cat "$AEMET_KEY_FILE")"
+else
+  warn "Missing aemet-api-key.txt in lambda/ — AEMET-provider alerts will be skipped."
+  AEMET_API_KEY=""
+fi
 
 
 # ── Build zip ─────────────────────────────────────────────────────────────────
@@ -70,7 +78,11 @@ ENV_JSON=$(python3 -c "
 import json
 with open('$SA_FILE') as f:
     sa = json.load(f)
-print(json.dumps({'Variables': {'FIREBASE_SERVICE_ACCOUNT': json.dumps(sa), 'FIREBASE_DATABASE_URL': '$DB_URL'}}))"
+print(json.dumps({'Variables': {
+    'FIREBASE_SERVICE_ACCOUNT': json.dumps(sa),
+    'FIREBASE_DATABASE_URL': '$DB_URL',
+    'AEMET_API_KEY': '''$AEMET_API_KEY''',
+}}))"
 )
 
 FUNCTION_EXISTS=$(aws lambda get-function --function-name "$FUNCTION_NAME" \

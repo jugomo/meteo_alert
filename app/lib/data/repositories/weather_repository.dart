@@ -6,9 +6,15 @@ import '../../core/constants/countries.dart';
 import '../models/alert.dart';
 import '../models/city_suggestion.dart';
 import '../models/forecast_hour.dart';
+import 'aemet_weather_repository.dart';
 
 class WeatherRepository {
+  final _aemet = AemetWeatherRepository();
+
   Future<List<ForecastHour>> fetchExceeded(Alert alert) async {
+    if (alert.provider == WeatherProvider.aemet) {
+      return _aemet.fetchExceeded(alert);
+    }
     final uri = Uri.parse(
       'https://api.open-meteo.com/v1/forecast'
       '?latitude=${alert.latitude}'

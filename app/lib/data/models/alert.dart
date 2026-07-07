@@ -1,3 +1,13 @@
+enum WeatherProvider {
+  openMeteo,
+  aemet;
+
+  String get id => this == WeatherProvider.aemet ? 'aemet' : 'openMeteo';
+
+  static WeatherProvider fromId(String? id) =>
+      id == 'aemet' ? WeatherProvider.aemet : WeatherProvider.openMeteo;
+}
+
 class Alert {
   final String country;
   final String city;
@@ -10,6 +20,8 @@ class Alert {
   final bool windEnabled;
   final bool temperatureEnabled;
   final bool rainEnabled;
+  final WeatherProvider provider;
+  final String? aemetMunicipioId;
 
   const Alert({
     required this.country,
@@ -23,6 +35,8 @@ class Alert {
     this.windEnabled = true,
     this.temperatureEnabled = true,
     this.rainEnabled = true,
+    this.provider = WeatherProvider.openMeteo,
+    this.aemetMunicipioId,
   });
 
   Map<String, dynamic> toJson() => {
@@ -37,6 +51,8 @@ class Alert {
         'windEnabled': windEnabled,
         'temperatureEnabled': temperatureEnabled,
         'rainEnabled': rainEnabled,
+        'provider': provider.id,
+        if (aemetMunicipioId != null) 'aemetMunicipioId': aemetMunicipioId,
       };
 
   factory Alert.fromJson(Map<String, dynamic> j) => Alert(
@@ -51,5 +67,7 @@ class Alert {
         windEnabled: (j['windEnabled'] as bool?) ?? true,
         temperatureEnabled: (j['temperatureEnabled'] as bool?) ?? true,
         rainEnabled: (j['rainEnabled'] as bool?) ?? true,
+        provider: WeatherProvider.fromId(j['provider'] as String?),
+        aemetMunicipioId: j['aemetMunicipioId'] as String?,
       );
 }

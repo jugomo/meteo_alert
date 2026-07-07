@@ -56,6 +56,9 @@ app/lib/firebase_options.dart
 .firebaserc
 .firebase/
 
+# AEMET OpenData API key — never commit to public repos
+app/assets/aemet_key.txt
+
 # CocoaPods dependencies (generated, not source)
 **/Pods/
 

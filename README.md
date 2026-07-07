@@ -32,9 +32,9 @@ meteo_alert/
             │            provider: Open-Meteo or AEMET)       │
             └────────────────────────┬────────────────────────┘
                                      ▼
-                     ┌──────────────────────────────────┐
-                     │  Open-Meteo API  ·  AEMET OpenData│
-                     └──────────────────────────────────┘
+                     ┌─────────────────────────────────────┐
+                     │  Open-Meteo API  ·  AEMET OpenData  │
+                     └─────────────────────────────────────┘
 ```
 
 The app and the Lambda both read/write alerts in Firebase RTDB and independently query whichever weather provider each alert was created with; the Lambda is what makes alerts fire even when the app is closed, by pushing notifications through FCM.

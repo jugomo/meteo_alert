@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/constants/countries.dart';
+import '../../core/weather_provider_prefs.dart';
+import '../../data/aemet_municipios_catalog.dart';
 import '../../data/models/alert.dart';
 import '../../data/models/city_suggestion.dart';
 import '../../data/repositories/weather_repository.dart';
@@ -29,6 +31,7 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
   late bool _windEnabled;
   late bool _temperatureEnabled;
   late bool _rainEnabled;
+  late WeatherProvider _provider;
 
   Timer? _debounceTimer;
   List<CitySuggestion> _suggestions = [];
@@ -36,13 +39,17 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
 
   double? _selectedLat;
   double? _selectedLon;
+  String? _selectedMunicipioId;
   bool _submitting = false;
+
+  bool get _isAemet => _provider == WeatherProvider.aemet;
 
   @override
   void initState() {
     super.initState();
     final a = widget.initialAlert;
-    _selectedCountry = a?.country ?? 'España';
+    _provider = a?.provider ?? weatherProviderPrefs.provider.value;
+    _selectedCountry = _isAemet ? 'España' : (a?.country ?? 'España');
     _cityController = TextEditingController(text: a?.city ?? '');
     _forecastDays = (a?.forecastDays ?? 7).toDouble();
     _wind = a?.wind ?? 10;
@@ -53,11 +60,13 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
     _rainEnabled = a?.rainEnabled ?? true;
     _selectedLat = a?.latitude;
     _selectedLon = a?.longitude;
+    _selectedMunicipioId = a?.aemetMunicipioId;
   }
 
   void _onCityChanged(String value) {
     _selectedLat = null;
     _selectedLon = null;
+    _selectedMunicipioId = null;
     setState(() => _suggestions = []);
     _debounceTimer?.cancel();
     if (value.trim().length < 2) return;
@@ -70,7 +79,9 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
   Future<void> _fetchSuggestions(String query) async {
     setState(() => _loadingSuggestions = true);
     try {
-      final results = await _weatherRepo.fetchSuggestions(query, _selectedCountry);
+      final results = _isAemet
+          ? await AemetMunicipiosCatalog.search(query)
+          : await _weatherRepo.fetchSuggestions(query, _selectedCountry);
       if (mounted) setState(() => _suggestions = results);
     } catch (_) {
       // silently ignore network errors
@@ -85,25 +96,44 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
 
     double? lat = _selectedLat;
     double? lon = _selectedLon;
+    String? municipioId = _selectedMunicipioId;
 
     if (lat == null || lon == null) {
-      final coords = await _weatherRepo.geocodeCity(
-        _cityController.text.trim(),
-        _selectedCountry,
-      );
-      if (coords == null) {
-        if (mounted) {
-          setState(() => _submitting = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No se encontró la ciudad. Selecciona una sugerencia.'),
-            ),
-          );
+      if (_isAemet) {
+        final matches = await AemetMunicipiosCatalog.search(_cityController.text.trim(), limit: 1);
+        if (matches.isEmpty) {
+          if (mounted) {
+            setState(() => _submitting = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('No se encontró el municipio. Selecciona una sugerencia.'),
+              ),
+            );
+          }
+          return;
         }
-        return;
+        lat = matches.first.latitude;
+        lon = matches.first.longitude;
+        municipioId = matches.first.aemetMunicipioId;
+      } else {
+        final coords = await _weatherRepo.geocodeCity(
+          _cityController.text.trim(),
+          _selectedCountry,
+        );
+        if (coords == null) {
+          if (mounted) {
+            setState(() => _submitting = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('No se encontró la ciudad. Selecciona una sugerencia.'),
+              ),
+            );
+          }
+          return;
+        }
+        lat = coords.$1;
+        lon = coords.$2;
       }
-      lat = coords.$1;
-      lon = coords.$2;
     }
 
     widget.onCreated(Alert(
@@ -118,6 +148,8 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
       windEnabled: _windEnabled,
       temperatureEnabled: _temperatureEnabled,
       rainEnabled: _rainEnabled,
+      provider: _provider,
+      aemetMunicipioId: _isAemet ? municipioId : null,
     ));
 
     if (mounted) Navigator.pop(context);
@@ -174,8 +206,16 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
               items: countries
                   .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                   .toList(),
-              onChanged: (v) => setState(() => _selectedCountry = v),
+              onChanged: _isAemet ? null : (v) => setState(() => _selectedCountry = v),
             ),
+            if (_isAemet)
+              const Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: Text(
+                  'AEMET OpenData solo cubre España.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ),
             const SizedBox(height: 16),
             TextField(
               controller: _cityController,
@@ -205,6 +245,7 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
                               _cityController.text = s.name;
                               _selectedLat = s.latitude;
                               _selectedLon = s.longitude;
+                              _selectedMunicipioId = s.aemetMunicipioId;
                               setState(() => _suggestions = []);
                             },
                           ))

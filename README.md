@@ -28,15 +28,29 @@ meteo_alert/
 │                     Firebase (Auth · RTDB · FCM)                       │
 └────────────────────────────────────────────────────────────────────────┘
             ▲                                                 ▲
-            │                  forecast + geocoding           │
+            │            forecast + geocoding (per-alert      │
+            │            provider: Open-Meteo or AEMET)       │
             └────────────────────────┬────────────────────────┘
                                      ▼
-                         ┌──────────────────────────┐
-                         │      Open-Meteo API      │
-                         └──────────────────────────┘
+                     ┌──────────────────────────────────┐
+                     │  Open-Meteo API  ·  AEMET OpenData│
+                     └──────────────────────────────────┘
 ```
 
-The app and the Lambda both read/write alerts in Firebase RTDB and query Open-Meteo independently; the Lambda is what makes alerts fire even when the app is closed, by pushing notifications through FCM.
+The app and the Lambda both read/write alerts in Firebase RTDB and independently query whichever weather provider each alert was created with; the Lambda is what makes alerts fire even when the app is closed, by pushing notifications through FCM.
+
+### Weather providers
+
+Each alert stores its own `provider` (`openMeteo` or `aemet`), chosen from the app's Settings screen at creation time, so the app and the Lambda always agree on where to fetch that alert's forecast from:
+
+| | Open-Meteo | AEMET OpenData |
+|---|---|---|
+| Coverage | Worldwide | Spain only |
+| Location lookup | Free-text geocoding API | Local municipios (INE) catalog bundled with the app — `app/assets/aemet_municipios.json` |
+| Auth | None | Personal API key (free, requested at [opendata.aemet.es](https://opendata.aemet.es)) |
+| Forecast horizon | Up to the alert's configured days | Capped at 3 days (AEMET's own limit) |
+
+AEMET requires a personal API key that must **not** be committed. If it's missing, the app disables the AEMET option in Settings ("No disponible actualmente") and the Lambda silently skips AEMET-provider alerts. See [AEMET key setup](#aemet-key-setup-both-app-and-lambda) below.
 
 ---
 
@@ -47,26 +61,31 @@ The app and the Lambda both read/write alerts in Firebase RTDB and query Open-Me
 - **Authentication** — sign in with Firebase Auth; alerts are tied to the authenticated user.
 - **Multiple alerts** — each alert is displayed as an independent tab.
 - **Configurable thresholds** — enable or disable wind (km/h), temperature (°C), and rain probability (%) independently.
-- **Hourly forecast** — queries the [Open-Meteo](https://open-meteo.com) API and lists only the hours where a threshold is exceeded, grouped by day.
-- **Automatic geocoding** — city suggestions appear in real time while typing; coordinates are resolved before saving the alert.
+- **Hourly forecast** — queries [Open-Meteo](https://open-meteo.com) or [AEMET OpenData](https://opendata.aemet.es) (selectable in Settings) and lists only the hours where a threshold is exceeded, grouped by day.
+- **Automatic geocoding** — city suggestions appear in real time while typing; coordinates are resolved before saving the alert (via Open-Meteo's geocoder or the local AEMET municipios catalog, depending on the selected provider).
 - **Cloud persistence** — alerts are stored in Firebase Realtime Database and synced across devices.
 - **Local persistence** — alerts are also cached in `SharedPreferences` and restored on next launch.
 - **Pull-to-refresh** — swipe down on the detail view to refresh the forecast.
 - **Push notifications** — local notification fired when any threshold will be exceeded in the next hour; server-side FCM push notifications sent by the Lambda microservice.
 - **Dark / light mode** — theme preference toggled from the settings screen and persisted locally.
-- **Settings screen** — dark mode switch, sign-out action, and an About tab with app and API info.
+- **Settings screen** — dark mode switch, weather provider selector (Open-Meteo / AEMET OpenData), sign-out action, and an About tab with app and API info.
 
 ### Project structure
 
 ```
 app/
 ├── pubspec.yaml
+├── assets/
+│   ├── aemet_municipios.json              # AEMET municipios (INE) catalog — name, id, lat/lon (tracked)
+│   └── aemet_key.txt                      # AEMET OpenData API key (gitignored, not in repo)
 └── lib/
     ├── main.dart                             # Entry point
     ├── app.dart                              # MaterialApp + FCM token registration
     ├── firebase_options.dart                 # Generated Firebase configuration
     ├── core/
     │   ├── alert_checker.dart                # Checks forecasts and triggers local notifications
+    │   ├── aemet_config.dart                 # Loads the AEMET API key asset; disables AEMET if absent
+    │   ├── weather_provider_prefs.dart       # ValueNotifier<WeatherProvider> with SharedPreferences
     │   ├── notification_service.dart         # Conditional export (native / web)
     │   ├── notification_service_native.dart  # flutter_local_notifications implementation
     │   ├── notification_service_web.dart     # Web Notification API implementation
@@ -74,18 +93,20 @@ app/
     │   └── constants/
     │       └── countries.dart                # Country list and ISO codes
     ├── data/
+    │   ├── aemet_municipios_catalog.dart     # Offline search over the bundled AEMET municipios catalog
     │   ├── models/
-    │   │   ├── alert.dart                    # Alert model with JSON serialization
+    │   │   ├── alert.dart                    # Alert model + WeatherProvider enum, JSON serialization
     │   │   ├── forecast_hour.dart            # Forecast hour with exceeded values
-    │   │   └── city_suggestion.dart          # Geocoding suggestion
+    │   │   └── city_suggestion.dart          # Geocoding / municipio suggestion
     │   └── repositories/
     │       ├── alert_repository.dart         # Firebase RTDB persistence
     │       ├── auth_repository.dart          # Firebase Auth (sign in / sign out)
-    │       └── weather_repository.dart       # Open-Meteo API (forecast + geocoding)
+    │       ├── weather_repository.dart       # Open-Meteo API (forecast + geocoding); delegates to AEMET below
+    │       └── aemet_weather_repository.dart # AEMET OpenData API (hourly forecast by municipio)
     └── presentation/
         ├── screens/
         │   ├── home_screen.dart              # Main screen with TabBar
-        │   ├── settings_screen.dart          # Dark mode, sign out, About
+        │   ├── settings_screen.dart          # Dark mode, weather provider, sign out, About
         │   └── auth_screen.dart              # Login / registration screen
         └── widgets/
             ├── alert_detail_view.dart        # Forecast view per alert
@@ -97,12 +118,13 @@ app/
 
 ### External APIs
 
-| Service | Purpose |
-|---|---|
-| `api.open-meteo.com/v1/forecast` | Hourly forecast (temperature, wind, rain) |
-| `geocoding-api.open-meteo.com/v1/search` | City autocomplete and geocoding |
+| Service | Purpose | Auth |
+|---|---|---|
+| `api.open-meteo.com/v1/forecast` | Hourly forecast (temperature, wind, rain) | None |
+| `geocoding-api.open-meteo.com/v1/search` | City autocomplete and geocoding | None |
+| `opendata.aemet.es/opendata/api/prediccion/especifica/municipio/horaria/{id}` | Hourly forecast for a Spanish municipio (id = INE code) | `api_key` header — see [AEMET key setup](#aemet-key-setup-both-app-and-lambda) |
 
-Both APIs are free and require no API key.
+Open-Meteo is free and requires no API key. AEMET OpenData is also free but requires a personal API key; city lookup for AEMET doesn't hit a network API at all — it searches the bundled `assets/aemet_municipios.json` catalog locally.
 
 ### Main dependencies
 
@@ -142,6 +164,16 @@ After cloning, run from the `app/` directory:
 flutterfire configure --project=<your-firebase-project-id>
 ```
 
+#### AEMET key setup (both app and Lambda)
+
+AEMET OpenData is optional — the app and Lambda work fine with only Open-Meteo. To enable it:
+
+1. Request a free API key at [opendata.aemet.es/centrodedescargas/altaUsuario](https://opendata.aemet.es/centrodedescargas/altaUsuario).
+2. For the app: save the key (just the raw token, no quotes/newlines) as `app/assets/aemet_key.txt`.
+3. For the Lambda: save the same key as `lambda/aemet-api-key.txt`.
+
+Both files are gitignored and must never be committed. If either is missing, that side simply treats AEMET as unavailable — the app disables the option in Settings, and the Lambda skips AEMET-provider alerts without failing.
+
 #### Run
 
 ```bash
@@ -154,7 +186,7 @@ flutter run
 
 ## Lambda microservice (`lambda/`)
 
-A serverless function that runs every hour on AWS, checks all user alerts against the Open-Meteo forecast, and sends FCM push notifications when any threshold is exceeded.
+A serverless function that runs every hour on AWS, checks all user alerts against their chosen forecast provider (Open-Meteo or AEMET), and sends FCM push notifications when any threshold is exceeded.
 
 ### Architecture
 
@@ -164,10 +196,13 @@ EventBridge (cron: every hour, on the hour, UTC)
         ▼
   AWS Lambda (Python)
         │
-        ├── Firebase RTDB  →  read all users + alerts + FCM tokens
-        ├── Open-Meteo API →  fetch hourly forecast per location (UTC)
-        └── Firebase FCM   →  send push notification if threshold exceeded
+        ├── Firebase RTDB      →  read all users + alerts + FCM tokens
+        ├── Open-Meteo API     →  fetch hourly forecast (alerts with provider = openMeteo)
+        ├── AEMET OpenData API →  fetch hourly forecast by municipio id (provider = aemet)
+        └── Firebase FCM       →  send push notification if threshold exceeded
 ```
+
+Each alert's `provider` field (set from the app's Settings screen) decides which branch runs; AEMET-provider alerts are skipped if `AEMET_API_KEY` isn't configured (see [AEMET key setup](#aemet-key-setup-both-app-and-lambda)).
 
 ### AWS free tier cost
 
@@ -184,6 +219,7 @@ EventBridge (cron: every hour, on the hour, UTC)
 - [AWS CLI](https://aws.amazon.com/cli/) installed and configured
 - Python 3.x and pip3
 - Firebase service account JSON (see below)
+- (Optional) AEMET OpenData API key, as `lambda/aemet-api-key.txt` — see [AEMET key setup](#aemet-key-setup-both-app-and-lambda). Without it, AEMET-provider alerts are silently skipped.
 
 #### Configure AWS CLI
 
@@ -219,7 +255,7 @@ The script handles everything on first run and subsequent updates:
 1. Installs Python dependencies into a build directory
 2. Packages `index.py` + dependencies into `function.zip`
 3. Creates the IAM execution role (`meteo-alert-lambda-role`) if it does not exist
-4. Creates or updates the Lambda function (`meteo-alert-checker`) with the Firebase credentials as environment variables
+4. Creates or updates the Lambda function (`meteo-alert-checker`) with the Firebase credentials and the AEMET API key (if `aemet-api-key.txt` exists) as environment variables
 5. Creates or updates the EventBridge rule (`meteo-alert-hourly`, `cron(0 * * * ? *)`) so it fires every hour on the hour (UTC) — reconciled on every deploy, even if the rule already exists
 6. Wires the rule to the Lambda function
 

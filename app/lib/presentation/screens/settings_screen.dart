@@ -316,7 +316,7 @@ class _AboutTab extends StatelessWidget {
         ),
         const SizedBox(height: 24),
         Text(
-          'API meteorológica',
+          'APIs meteorológicas',
           style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
@@ -330,6 +330,21 @@ class _AboutTab extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           'open-meteo.com',
+          style: textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.primary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          'También puedes elegir AEMET OpenData, la API pública de la '
+          'Agencia Estatal de Meteorología de España, con previsiones '
+          'horarias oficiales para los municipios españoles.',
+          style: TextStyle(height: 1.5),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'opendata.aemet.es',
           style: textTheme.bodyMedium?.copyWith(
             color: Theme.of(context).colorScheme.primary,
             fontWeight: FontWeight.w600,

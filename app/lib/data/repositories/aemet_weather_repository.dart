@@ -8,9 +8,10 @@ import '../models/forecast_hour.dart';
 
 /// Fetches hourly forecasts from AEMET OpenData for a given municipio (INE
 /// code). Unlike Open-Meteo, AEMET requests are resolved in two steps: the
-/// first call (authenticated with an api_key header) returns a short-lived
-/// `datos` URL, which is then fetched to get the actual forecast payload
-/// (encoded as ISO-8859-15).
+/// first call (authenticated via an `api_key` query param — not a header,
+/// so the request stays CORS-simple on web) returns a short-lived `datos`
+/// URL, which is then fetched to get the actual forecast payload (encoded
+/// as ISO-8859-15).
 class AemetWeatherRepository {
   static const _base = 'https://opendata.aemet.es/opendata/api';
 
@@ -22,8 +23,7 @@ class AemetWeatherRepository {
     }
 
     final metaResponse = await http.get(
-      Uri.parse('$_base/prediccion/especifica/municipio/horaria/$municipioId'),
-      headers: {'api_key': apiKey},
+      Uri.parse('$_base/prediccion/especifica/municipio/horaria/$municipioId?api_key=$apiKey'),
     );
     if (metaResponse.statusCode != 200) throw Exception('Error del servidor');
     final meta = jsonDecode(metaResponse.body) as Map<String, dynamic>;

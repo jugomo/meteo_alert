@@ -66,7 +66,7 @@ AEMET requires a personal API key that must **not** be committed. If it's missin
 - **Cloud persistence** — alerts are stored in Firebase Realtime Database and synced across devices.
 - **Local persistence** — alerts are also cached in `SharedPreferences` and restored on next launch.
 - **Pull-to-refresh** — swipe down on the detail view to refresh the forecast.
-- **Push notifications** — local notification fired when any threshold will be exceeded in the next hour; server-side FCM push notifications sent by the Lambda microservice.
+- **Push notifications** — local notification fired when any threshold will be exceeded in the next hour; server-side FCM push notifications sent by the Lambda microservice. Both title the notification with the city and forecast provider, e.g. `Madrid (AEMET OpenData)`.
 - **Dark / light mode** — theme preference toggled from the settings screen and persisted locally.
 - **Settings screen** — dark mode switch, weather provider selector (Open-Meteo / AEMET OpenData), sign-out action, and an About tab with app and API info.
 
@@ -122,7 +122,7 @@ app/
 |---|---|---|
 | `api.open-meteo.com/v1/forecast` | Hourly forecast (temperature, wind, rain) | None |
 | `geocoding-api.open-meteo.com/v1/search` | City autocomplete and geocoding | None |
-| `opendata.aemet.es/opendata/api/prediccion/especifica/municipio/horaria/{id}` | Hourly forecast for a Spanish municipio (id = INE code) | `api_key` header — see [AEMET key setup](#aemet-key-setup-both-app-and-lambda) |
+| `opendata.aemet.es/opendata/api/prediccion/especifica/municipio/horaria/{id}` | Hourly forecast for a Spanish municipio (id = INE code) | `api_key` — see [AEMET key setup](#aemet-key-setup-both-app-and-lambda). Sent as a query param from the Flutter app (a header would force a CORS preflight on web, which AEMET's server doesn't answer) and as a header from the Lambda (plain server-to-server call, no CORS involved) |
 
 Open-Meteo is free and requires no API key. AEMET OpenData is also free but requires a personal API key; city lookup for AEMET doesn't hit a network API at all — it searches the bundled `assets/aemet_municipios.json` catalog locally.
 

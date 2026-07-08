@@ -92,10 +92,20 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
 
   Future<void> _fetchSuggestions(String query) async {
     setState(() => _loadingSuggestions = true);
+    final started = DateTime.now();
     try {
       final results = _isAemet
           ? await AemetMunicipiosCatalog.search(query)
           : await _weatherRepo.fetchSuggestions(query, _selectedCountry);
+      // The AEMET catalog is a local, bundled lookup and resolves almost
+      // instantly, which would otherwise make the loading bar flash too
+      // fast to be visible. Enforce a minimum duration so both providers
+      // give the same visual feedback while searching.
+      final elapsed = DateTime.now().difference(started);
+      const minDuration = Duration(milliseconds: 300);
+      if (elapsed < minDuration) {
+        await Future.delayed(minDuration - elapsed);
+      }
       if (mounted) setState(() => _suggestions = results);
     } catch (_) {
       // silently ignore network errors
@@ -232,8 +242,18 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
                 ),
               ],
               selected: {_provider},
-              onSelectionChanged: (s) => _onProviderChanged(s.first),
+              onSelectionChanged: widget.initialAlert == null
+                  ? (s) => _onProviderChanged(s.first)
+                  : null,
             ),
+            if (widget.initialAlert != null)
+              const Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: Text(
+                  'El proveedor no se puede cambiar al editar una alerta.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               initialValue: _selectedCountry,

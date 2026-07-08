@@ -41,7 +41,7 @@ The app and the Lambda both read/write alerts in Firebase RTDB and independently
 
 ### Weather providers
 
-Each alert stores its own `provider` (`openMeteo` or `aemet`), chosen from the app's Settings screen at creation time, so the app and the Lambda always agree on where to fetch that alert's forecast from:
+Each alert stores its own `provider` (`openMeteo` or `aemet`), chosen when creating or editing the alert, so the app and the Lambda always agree on where to fetch that alert's forecast from:
 
 | | Open-Meteo | AEMET OpenData |
 |---|---|---|
@@ -50,7 +50,7 @@ Each alert stores its own `provider` (`openMeteo` or `aemet`), chosen from the a
 | Auth | None | Personal API key (free, requested at [opendata.aemet.es](https://opendata.aemet.es)) |
 | Forecast horizon | Up to the alert's configured days | Capped at 3 days (AEMET's own limit) |
 
-AEMET requires a personal API key that must **not** be committed. If it's missing, the app disables the AEMET option in Settings ("No disponible actualmente") and the Lambda silently skips AEMET-provider alerts. See [AEMET key setup](#aemet-key-setup-both-app-and-lambda) below.
+AEMET requires a personal API key that must **not** be committed. If it's missing, the app disables the AEMET option in the alert creation/edit sheet ("No disponible actualmente") and the Lambda silently skips AEMET-provider alerts. See [AEMET key setup](#aemet-key-setup-both-app-and-lambda) below.
 
 ---
 
@@ -61,14 +61,14 @@ AEMET requires a personal API key that must **not** be committed. If it's missin
 - **Authentication** — sign in with Firebase Auth; alerts are tied to the authenticated user.
 - **Multiple alerts** — each alert is displayed as an independent tab.
 - **Configurable thresholds** — enable or disable wind (km/h), temperature (°C), and rain probability (%) independently.
-- **Hourly forecast** — queries [Open-Meteo](https://open-meteo.com) or [AEMET OpenData](https://opendata.aemet.es) (selectable in Settings) and lists only the hours where a threshold is exceeded, grouped by day.
+- **Hourly forecast** — queries [Open-Meteo](https://open-meteo.com) or [AEMET OpenData](https://opendata.aemet.es) (selectable per alert, when creating or editing it) and lists only the hours where a threshold is exceeded, grouped by day.
 - **Automatic geocoding** — city suggestions appear in real time while typing; coordinates are resolved before saving the alert (via Open-Meteo's geocoder or the local AEMET municipios catalog, depending on the selected provider).
 - **Cloud persistence** — alerts are stored in Firebase Realtime Database and synced across devices.
 - **Local persistence** — alerts are also cached in `SharedPreferences` and restored on next launch.
 - **Pull-to-refresh** — swipe down on the detail view to refresh the forecast.
 - **Push notifications** — local notification fired when any threshold will be exceeded in the next hour; server-side FCM push notifications sent by the Lambda microservice. Both title the notification with the city and forecast provider, e.g. `Madrid (AEMET OpenData)`.
 - **Dark / light mode** — theme preference toggled from the settings screen and persisted locally.
-- **Settings screen** — dark mode switch, weather provider selector (Open-Meteo / AEMET OpenData), sign-out action, and an About tab with app and API info.
+- **Settings screen** — dark mode switch, local/push notification toggles, sign-out and delete-account actions, and an About tab with app and API info.
 
 ### Project structure
 
@@ -106,11 +106,11 @@ app/
     └── presentation/
         ├── screens/
         │   ├── home_screen.dart              # Main screen with TabBar
-        │   ├── settings_screen.dart          # Dark mode, weather provider, sign out, About
+        │   ├── settings_screen.dart          # Dark mode, notifications, sign out, delete account, About
         │   └── auth_screen.dart              # Login / registration screen
         └── widgets/
             ├── alert_detail_view.dart        # Forecast view per alert
-            ├── create_alert_sheet.dart       # Bottom sheet to create/edit an alert
+            ├── create_alert_sheet.dart       # Bottom sheet to create/edit an alert, incl. provider picker
             ├── summary_chip.dart             # Threshold summary chip
             ├── hour_tile.dart                # Hourly row with exceeded values
             └── value_chip.dart               # Individual colored value chip
@@ -172,7 +172,7 @@ AEMET OpenData is optional — the app and Lambda work fine with only Open-Meteo
 2. For the app: save the key (just the raw token, no quotes/newlines) as `app/assets/aemet_key.txt`.
 3. For the Lambda: save the same key as `lambda/aemet-api-key.txt`.
 
-Both files are gitignored and must never be committed. If either is missing, that side simply treats AEMET as unavailable — the app disables the option in Settings, and the Lambda skips AEMET-provider alerts without failing.
+Both files are gitignored and must never be committed. If either is missing, that side simply treats AEMET as unavailable — the app disables the option in the alert creation/edit sheet, and the Lambda skips AEMET-provider alerts without failing.
 
 #### Run
 
@@ -202,7 +202,7 @@ EventBridge (cron: every hour, on the hour, UTC)
         └── Firebase FCM       →  send push notification if threshold exceeded
 ```
 
-Each alert's `provider` field (set from the app's Settings screen) decides which branch runs; AEMET-provider alerts are skipped if `AEMET_API_KEY` isn't configured (see [AEMET key setup](#aemet-key-setup-both-app-and-lambda)).
+Each alert's `provider` field (set when the alert is created or edited in the app) decides which branch runs; AEMET-provider alerts are skipped if `AEMET_API_KEY` isn't configured (see [AEMET key setup](#aemet-key-setup-both-app-and-lambda)).
 
 ### AWS free tier cost
 

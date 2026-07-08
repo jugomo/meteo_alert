@@ -193,10 +193,12 @@ def handler(event, context):
             if not parts:
                 continue
 
+            provider_label = "AEMET OpenData" if provider == "aemet" else "Open-Meteo"
+
             try:
                 message = messaging.Message(
                     notification=messaging.Notification(
-                        title=alert["city"],
+                        title=f"{alert['city']} ({provider_label})",
                         body="\n".join(parts),
                     ),
                     token=fcm_token,

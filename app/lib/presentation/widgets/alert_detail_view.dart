@@ -146,6 +146,10 @@ class _AlertDetailViewState extends State<AlertDetailView> {
                 runSpacing: 4,
                 children: [
                   SummaryChip(
+                    icon: Icons.cloud_outlined,
+                    label: alert.provider.label,
+                  ),
+                  SummaryChip(
                     icon: Icons.calendar_today,
                     label: '${alert.forecastDays} días',
                   ),

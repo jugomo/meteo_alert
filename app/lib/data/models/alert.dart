@@ -4,6 +4,9 @@ enum WeatherProvider {
 
   String get id => this == WeatherProvider.aemet ? 'aemet' : 'openMeteo';
 
+  String get label =>
+      this == WeatherProvider.aemet ? 'AEMET OpenData' : 'Open-Meteo';
+
   static WeatherProvider fromId(String? id) =>
       id == 'aemet' ? WeatherProvider.aemet : WeatherProvider.openMeteo;
 }

@@ -45,7 +45,7 @@ class AlertChecker {
       if (parts.isNotEmpty) {
         await NotificationService.show(
           id: id,
-          title: alert.city,
+          title: '${alert.city} (${alert.provider.label})',
           body: parts.join('\n'),
         );
       }

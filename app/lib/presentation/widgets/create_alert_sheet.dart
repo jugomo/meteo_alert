@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../core/aemet_config.dart';
 import '../../core/constants/countries.dart';
 import '../../core/weather_provider_prefs.dart';
 import '../../data/aemet_municipios_catalog.dart';
@@ -61,6 +62,19 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
     _selectedLat = a?.latitude;
     _selectedLon = a?.longitude;
     _selectedMunicipioId = a?.aemetMunicipioId;
+  }
+
+  void _onProviderChanged(WeatherProvider provider) {
+    if (provider == _provider) return;
+    weatherProviderPrefs.setProvider(provider);
+    setState(() {
+      _provider = provider;
+      if (_isAemet) _selectedCountry = 'España';
+      _selectedLat = null;
+      _selectedLon = null;
+      _selectedMunicipioId = null;
+      _suggestions = [];
+    });
   }
 
   void _onCityChanged(String value) {
@@ -197,6 +211,30 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
                   ?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 24),
+            Text(
+              'Proveedor meteorológico',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleSmall
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            SegmentedButton<WeatherProvider>(
+              segments: [
+                const ButtonSegment(
+                  value: WeatherProvider.openMeteo,
+                  label: Text('Open-Meteo'),
+                ),
+                ButtonSegment(
+                  value: WeatherProvider.aemet,
+                  label: const Text('AEMET OpenData'),
+                  enabled: AemetConfig.isAvailable,
+                ),
+              ],
+              selected: {_provider},
+              onSelectionChanged: (s) => _onProviderChanged(s.first),
+            ),
+            const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               initialValue: _selectedCountry,
               decoration: const InputDecoration(

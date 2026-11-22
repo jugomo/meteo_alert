@@ -1,0 +1,21 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid && !newData.exists()",
+        "alertsJson": {
+          ".write": "$uid === auth.uid",
+          ".validate": "newData.isString() && newData.val().length < 50000"
+        },
+        "fcmToken": {
+          ".write": "$uid === auth.uid",
+          ".validate": "newData.isString() && newData.val().length < 4096"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
+  }
+}

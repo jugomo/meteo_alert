@@ -153,6 +153,17 @@ class _AlertDetailViewState extends State<AlertDetailView> {
                     icon: Icons.calendar_today,
                     label: '${alert.forecastDays} días',
                   ),
+                  SummaryChip(
+                    icon: Icons.notifications_active_outlined,
+                    label: alert.leadHours == 0
+                        ? 'Aviso al momento'
+                        : 'Aviso ${alert.leadHours} h antes',
+                  ),
+                  if (alert.digestEnabled)
+                    SummaryChip(
+                      icon: Icons.today_outlined,
+                      label: 'Resumen ${alert.digestHour.toString().padLeft(2, '0')}:00',
+                    ),
                   if (alert.temperatureEnabled)
                     SummaryChip(
                       icon: Icons.thermostat,

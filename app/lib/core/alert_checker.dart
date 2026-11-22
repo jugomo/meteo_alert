@@ -20,7 +20,8 @@ class AlertChecker {
     try {
       final now = DateTime.now();
       final windowStart = DateTime(now.year, now.month, now.day, now.hour);
-      final windowEnd = now.add(const Duration(hours: 1));
+      final windowEnd = now.add(
+          Duration(hours: alert.leadHours < 1 ? 1 : alert.leadHours));
 
       final exceeded = await _weatherRepo.fetchExceeded(alert);
       final upcoming = exceeded

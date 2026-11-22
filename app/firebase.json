@@ -38,6 +38,9 @@
             }
         }
     },
+    "database": {
+        "rules": "database.rules.json"
+    },
     "hosting": {
         "site": "meteoalert",
         "public": "build/web",

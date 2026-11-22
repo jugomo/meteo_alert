@@ -1,3 +1,5 @@
+import 'dart:math';
+
 enum WeatherProvider {
   openMeteo,
   aemet;
@@ -12,6 +14,16 @@ enum WeatherProvider {
 }
 
 class Alert {
+  /// Maximum alerts per user. Must match MAX_ALERTS_PER_USER in lambda/index.py,
+  /// which ignores any alert beyond this count.
+  static const maxPerUser = 20;
+
+  /// Hour options offered for lead time, in hours (0 = only the current hour).
+  static const leadHourOptions = [0, 1, 3, 6, 12, 24];
+
+  /// Stable identifier used by the backend to track which episodes were already
+  /// notified. Null for alerts created before ids existed.
+  final String? id;
   final String country;
   final String city;
   final int forecastDays;
@@ -26,7 +38,15 @@ class Alert {
   final WeatherProvider provider;
   final String? aemetMunicipioId;
 
+  /// Notify when thresholds will be exceeded within the next [leadHours] hours.
+  final int leadHours;
+
+  /// Send a daily summary of the next 24 h at [digestHour] (local time of the city).
+  final bool digestEnabled;
+  final int digestHour;
+
   const Alert({
+    this.id,
     required this.country,
     required this.city,
     required this.forecastDays,
@@ -40,9 +60,19 @@ class Alert {
     this.rainEnabled = true,
     this.provider = WeatherProvider.openMeteo,
     this.aemetMunicipioId,
+    this.leadHours = 0,
+    this.digestEnabled = false,
+    this.digestHour = 8,
   });
 
+  static String newId() {
+    final now = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
+    final rnd = Random().nextInt(0xFFFFFFFF).toRadixString(36);
+    return '$now$rnd';
+  }
+
   Map<String, dynamic> toJson() => {
+        if (id != null) 'id': id,
         'country': country,
         'city': city,
         'forecastDays': forecastDays,
@@ -56,9 +86,13 @@ class Alert {
         'rainEnabled': rainEnabled,
         'provider': provider.id,
         if (aemetMunicipioId != null) 'aemetMunicipioId': aemetMunicipioId,
+        'leadHours': leadHours,
+        'digestEnabled': digestEnabled,
+        'digestHour': digestHour,
       };
 
   factory Alert.fromJson(Map<String, dynamic> j) => Alert(
+        id: j['id'] as String?,
         country: j['country'] as String,
         city: j['city'] as String,
         forecastDays: j['forecastDays'] as int,
@@ -72,5 +106,8 @@ class Alert {
         rainEnabled: (j['rainEnabled'] as bool?) ?? true,
         provider: WeatherProvider.fromId(j['provider'] as String?),
         aemetMunicipioId: j['aemetMunicipioId'] as String?,
+        leadHours: (j['leadHours'] as num?)?.toInt() ?? 0,
+        digestEnabled: (j['digestEnabled'] as bool?) ?? false,
+        digestHour: (j['digestHour'] as num?)?.toInt() ?? 8,
       );
 }

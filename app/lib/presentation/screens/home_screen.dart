@@ -86,6 +86,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _addAlert(Alert alert) {
+    if (_alerts.length >= Alert.maxPerUser) return;
     setState(() {
       _alerts.add(alert);
       _tabController?.dispose();
@@ -133,6 +134,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _openCreateSheet() {
+    if (_alerts.length >= Alert.maxPerUser) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Has alcanzado el máximo de ${Alert.maxPerUser} alertas. '
+              'Elimina alguna para crear una nueva.',
+            ),
+          ),
+        );
+      return;
+    }
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

@@ -33,6 +33,9 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
   late bool _temperatureEnabled;
   late bool _rainEnabled;
   late WeatherProvider _provider;
+  late int _leadHours;
+  late bool _digestEnabled;
+  late int _digestHour;
 
   Timer? _debounceTimer;
   List<CitySuggestion> _suggestions = [];
@@ -62,6 +65,9 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
     _selectedLat = a?.latitude;
     _selectedLon = a?.longitude;
     _selectedMunicipioId = a?.aemetMunicipioId;
+    _leadHours = a?.leadHours ?? 0;
+    _digestEnabled = a?.digestEnabled ?? false;
+    _digestHour = a?.digestHour ?? 8;
   }
 
   void _onProviderChanged(WeatherProvider provider) {
@@ -161,6 +167,7 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
     }
 
     widget.onCreated(Alert(
+      id: widget.initialAlert?.id ?? (widget.initialAlert == null ? Alert.newId() : null),
       country: _selectedCountry!,
       city: _cityController.text.trim(),
       forecastDays: _forecastDays.round(),
@@ -174,6 +181,9 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
       rainEnabled: _rainEnabled,
       provider: _provider,
       aemetMunicipioId: _isAemet ? municipioId : null,
+      leadHours: _leadHours,
+      digestEnabled: _digestEnabled,
+      digestHour: _digestHour,
     ));
 
     if (mounted) Navigator.pop(context);
@@ -375,6 +385,65 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
               onChanged: _rainEnabled ? (v) => setState(() => _rainProbability = v) : null,
             ),
             const SizedBox(height: 24),
+            Text(
+              'Notificaciones',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleSmall
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text('Avisar con antelación'),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                for (final h in Alert.leadHourOptions)
+                  ChoiceChip(
+                    label: Text(leadHoursLabel(h)),
+                    selected: _leadHours == h,
+                    onSelected: (_) => setState(() => _leadHours = h),
+                  ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                _leadHours == 0
+                    ? 'Te avisamos cuando se superen los umbrales en la hora actual.'
+                    : 'Te avisamos una vez si se van a superar los umbrales en las '
+                        'próximas $_leadHours h.',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Resumen diario'),
+              subtitle: const Text('Previsión de las próximas 24 h, cada día a la misma hora'),
+              value: _digestEnabled,
+              onChanged: (v) => setState(() => _digestEnabled = v),
+            ),
+            if (_digestEnabled)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Hora del resumen'),
+                  DropdownButton<int>(
+                    value: _digestHour,
+                    items: [
+                      for (int h = 0; h < 24; h++)
+                        DropdownMenuItem(
+                          value: h,
+                          child: Text('${h.toString().padLeft(2, '0')}:00'),
+                        ),
+                    ],
+                    onChanged: (v) => setState(() => _digestHour = v ?? _digestHour),
+                  ),
+                ],
+              ),
+            const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
               child: FilledButton(
@@ -425,3 +494,5 @@ class _ThresholdRow extends StatelessWidget {
     );
   }
 }
+
+String leadHoursLabel(int hours) => hours == 0 ? 'Al momento' : '$hours h';

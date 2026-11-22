@@ -1,0 +1,21 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Start emulator: Pixel_10_Pro_XL",
+            "type": "shell",
+            "command": "${workspaceFolder}/.vscode/start_emulator.sh",
+            "args": ["Pixel_10_Pro_XL", "5554"],
+            "presentation": { "reveal": "silent", "panel": "dedicated" },
+            "problemMatcher": []
+        },
+        {
+            "label": "Start emulator: Pixel_9_Pro_XL",
+            "type": "shell",
+            "command": "${workspaceFolder}/.vscode/start_emulator.sh",
+            "args": ["Pixel_9_Pro_XL", "5556"],
+            "presentation": { "reveal": "silent", "panel": "dedicated" },
+            "problemMatcher": []
+        }
+    ]
+}

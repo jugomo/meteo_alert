@@ -23,6 +23,32 @@
             "type": "dart",
             "flutterMode": "release",
             "cwd": "${workspaceFolder}/app"
+        },
+        {
+            "name": "meteo_alert (Pixel_10_Pro_XL)",
+            "request": "launch",
+            "type": "dart",
+            "cwd": "${workspaceFolder}/app",
+            "deviceId": "emulator-5554",
+            "preLaunchTask": "Start emulator: Pixel_10_Pro_XL"
+        },
+        {
+            "name": "meteo_alert (Pixel_9_Pro_XL)",
+            "request": "launch",
+            "type": "dart",
+            "cwd": "${workspaceFolder}/app",
+            "deviceId": "emulator-5556",
+            "preLaunchTask": "Start emulator: Pixel_9_Pro_XL"
+        }
+    ],
+    "compounds": [
+        {
+            "name": "meteo_alert (ambos emuladores)",
+            "configurations": [
+                "meteo_alert (Pixel_10_Pro_XL)",
+                "meteo_alert (Pixel_9_Pro_XL)"
+            ],
+            "stopAll": true
         }
     ]
 }

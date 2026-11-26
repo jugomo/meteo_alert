@@ -28,6 +28,7 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
   late double _forecastDays;
   late double _wind;
   late double _temperature;
+  late ThresholdDirection _temperatureDirection;
   late double _rainProbability;
   late bool _windEnabled;
   late bool _temperatureEnabled;
@@ -58,6 +59,7 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
     _forecastDays = (a?.forecastDays ?? 7).toDouble();
     _wind = a?.wind ?? 10;
     _temperature = a?.temperature ?? 25;
+    _temperatureDirection = a?.temperatureDirection ?? ThresholdDirection.above;
     _rainProbability = a?.rainProbability ?? 50;
     _windEnabled = a?.windEnabled ?? true;
     _temperatureEnabled = a?.temperatureEnabled ?? true;
@@ -173,6 +175,7 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
       forecastDays: _forecastDays.round(),
       wind: _wind,
       temperature: _temperature,
+      temperatureDirection: _temperatureDirection,
       rainProbability: _rainProbability,
       latitude: lat,
       longitude: lon,
@@ -358,14 +361,26 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
             _ThresholdRow(
               enabled: _temperatureEnabled,
               label: 'Temperatura',
-              valueLabel: '${_temperature.toStringAsFixed(0)} ºC',
+              valueLabel: '${_temperatureDirection.symbol} ${_temperature.toStringAsFixed(0)} ºC',
               onToggle: (v) => setState(() => _temperatureEnabled = v ?? true),
+              extra: DropdownButton<ThresholdDirection>(
+                value: _temperatureDirection,
+                isDense: true,
+                underline: const SizedBox.shrink(),
+                items: [
+                  for (final d in ThresholdDirection.values)
+                    DropdownMenuItem(value: d, child: Text(d.label)),
+                ],
+                onChanged: _temperatureEnabled
+                    ? (v) => setState(() => _temperatureDirection = v ?? _temperatureDirection)
+                    : null,
+              ),
             ),
             Slider(
               value: _temperature,
-              min: 0,
+              min: -20,
               max: 50,
-              divisions: 50,
+              divisions: 70,
               label: '${_temperature.toStringAsFixed(0)} ºC',
               onChanged: _temperatureEnabled ? (v) => setState(() => _temperature = v) : null,
             ),
@@ -469,12 +484,14 @@ class _ThresholdRow extends StatelessWidget {
   final String label;
   final String valueLabel;
   final void Function(bool?) onToggle;
+  final Widget? extra;
 
   const _ThresholdRow({
     required this.enabled,
     required this.label,
     required this.valueLabel,
     required this.onToggle,
+    this.extra,
   });
 
   @override
@@ -483,6 +500,7 @@ class _ThresholdRow extends StatelessWidget {
       children: [
         Checkbox(value: enabled, onChanged: onToggle),
         Expanded(child: Text(label)),
+        if (extra != null) ...[extra!, const SizedBox(width: 12)],
         Text(
           valueLabel,
           style: TextStyle(

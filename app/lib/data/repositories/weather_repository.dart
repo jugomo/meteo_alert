@@ -41,7 +41,7 @@ class WeatherRepository {
       final w = winds[i].toDouble();
       final r = rains[i] ?? 0.0;
 
-      final tOver = alert.temperatureEnabled && t > alert.temperature;
+      final tOver = alert.temperatureCrossed(t);
       final wOver = alert.windEnabled && w > alert.wind;
       final rOver = alert.rainEnabled && r > alert.rainProbability;
 

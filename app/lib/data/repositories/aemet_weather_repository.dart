@@ -73,7 +73,7 @@ class AemetWeatherRepository {
         final w = windByHour[hour] ?? 0.0;
         final r = _rainForHour(rainBlocks, hour) ?? 0.0;
 
-        final tOver = alert.temperatureEnabled && t > alert.temperature;
+        final tOver = alert.temperatureCrossed(t);
         final wOver = alert.windEnabled && w > alert.wind;
         final rOver = alert.rainEnabled && r > alert.rainProbability;
 

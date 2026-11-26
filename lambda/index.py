@@ -161,10 +161,16 @@ def _to_float(v) -> float | None:
 
 # ── Alert evaluation ──────────────────────────────────────────────────────────
 
+def _temperature_below(alert: dict) -> bool:
+    return alert.get("temperatureDirection") == "below"
+
+
 def _exceeded_variables(alert: dict, h: Hour) -> set[str]:
     out = set()
-    if alert.get("temperatureEnabled", True) and h.temperature is not None and h.temperature > alert["temperature"]:
-        out.add("temperature")
+    if alert.get("temperatureEnabled", True) and h.temperature is not None:
+        threshold = alert["temperature"]
+        if (h.temperature < threshold) if _temperature_below(alert) else (h.temperature > threshold):
+            out.add("temperature")
     if alert.get("windEnabled", True) and h.wind is not None and h.wind > alert["wind"]:
         out.add("wind")
     if alert.get("rainEnabled", True) and h.rain is not None and h.rain > alert["rainProbability"]:
@@ -206,7 +212,8 @@ VARIABLE_ORDER = ["temperature", "wind", "rain"]
 
 def _variable_label(alert: dict, var: str) -> str:
     if var == "temperature":
-        return f"Temperatura: >{alert['temperature']:.0f}°C"
+        symbol = "<" if _temperature_below(alert) else ">"
+        return f"Temperatura: {symbol}{alert['temperature']:.0f}°C"
     if var == "wind":
         return f"Viento: >{alert['wind']:.0f} km/h"
     return f"Prob. lluvia: >{alert['rainProbability']:.0f}%"

@@ -17,6 +17,7 @@ void main() {
     expect(a.leadHours, 0);
     expect(a.digestEnabled, isFalse);
     expect(a.digestHour, 8);
+    expect(a.temperatureDirection, ThresholdDirection.above);
     expect(a.toJson().containsKey('id'), isFalse);
   });
 
@@ -38,6 +39,23 @@ void main() {
     expect(b.leadHours, 6);
     expect(b.digestEnabled, isTrue);
     expect(b.digestHour, 21);
+  });
+
+  test('temperature direction survives a JSON round trip and is applied', () {
+    final a = Alert(
+      country: 'España',
+      city: 'Madrid',
+      forecastDays: 7,
+      wind: 10,
+      temperature: 0,
+      temperatureDirection: ThresholdDirection.below,
+      rainProbability: 50,
+    );
+    final b = Alert.fromJson(a.toJson());
+    expect(b.temperatureDirection, ThresholdDirection.below);
+    expect(b.temperatureLabel, '<0°C');
+    expect(b.temperatureCrossed(-2), isTrue);
+    expect(b.temperatureCrossed(3), isFalse);
   });
 
   test('newId generates distinct ids', () {

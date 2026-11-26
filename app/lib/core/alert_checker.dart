@@ -33,7 +33,7 @@ class AlertChecker {
 
       final parts = <String>[];
       if (upcoming.any((h) => h.temperature != null)) {
-        parts.add('Temperatura: >${alert.temperature.toStringAsFixed(0)}°C');
+        parts.add('Temperatura: ${alert.temperatureLabel}');
       }
       if (upcoming.any((h) => h.wind != null)) {
         parts.add('Viento: >${alert.wind.toStringAsFixed(0)} km/h');

@@ -167,7 +167,7 @@ class _AlertDetailViewState extends State<AlertDetailView> {
                   if (alert.temperatureEnabled)
                     SummaryChip(
                       icon: Icons.thermostat,
-                      label: '>${alert.temperature.toStringAsFixed(0)}°C',
+                      label: alert.temperatureLabel,
                     ),
                   if (alert.windEnabled)
                     SummaryChip(

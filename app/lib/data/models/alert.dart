@@ -13,6 +13,24 @@ enum WeatherProvider {
       id == 'aemet' ? WeatherProvider.aemet : WeatherProvider.openMeteo;
 }
 
+/// Whether a threshold is crossed when the value goes above or below it.
+enum ThresholdDirection {
+  above,
+  below;
+
+  String get id => name;
+
+  String get symbol => this == ThresholdDirection.below ? '<' : '>';
+
+  String get label => this == ThresholdDirection.below ? 'Por debajo' : 'Por encima';
+
+  bool isCrossed(double value, double threshold) =>
+      this == ThresholdDirection.below ? value < threshold : value > threshold;
+
+  static ThresholdDirection fromId(String? id) =>
+      id == 'below' ? ThresholdDirection.below : ThresholdDirection.above;
+}
+
 class Alert {
   /// Maximum alerts per user. Must match MAX_ALERTS_PER_USER in lambda/index.py,
   /// which ignores any alert beyond this count.
@@ -29,6 +47,7 @@ class Alert {
   final int forecastDays;
   final double wind;
   final double temperature;
+  final ThresholdDirection temperatureDirection;
   final double rainProbability;
   final double? latitude;
   final double? longitude;
@@ -52,6 +71,7 @@ class Alert {
     required this.forecastDays,
     required this.wind,
     required this.temperature,
+    this.temperatureDirection = ThresholdDirection.above,
     required this.rainProbability,
     this.latitude,
     this.longitude,
@@ -64,6 +84,12 @@ class Alert {
     this.digestEnabled = false,
     this.digestHour = 8,
   });
+
+  bool temperatureCrossed(double t) =>
+      temperatureEnabled && temperatureDirection.isCrossed(t, temperature);
+
+  String get temperatureLabel =>
+      '${temperatureDirection.symbol}${temperature.toStringAsFixed(0)}°C';
 
   static String newId() {
     final now = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
@@ -78,6 +104,7 @@ class Alert {
         'forecastDays': forecastDays,
         'wind': wind,
         'temperature': temperature,
+        'temperatureDirection': temperatureDirection.id,
         'rainProbability': rainProbability,
         if (latitude != null) 'latitude': latitude,
         if (longitude != null) 'longitude': longitude,
@@ -98,6 +125,8 @@ class Alert {
         forecastDays: j['forecastDays'] as int,
         wind: (j['wind'] as num).toDouble(),
         temperature: (j['temperature'] as num).toDouble(),
+        temperatureDirection:
+            ThresholdDirection.fromId(j['temperatureDirection'] as String?),
         rainProbability: (j['rainProbability'] as num).toDouble(),
         latitude: (j['latitude'] as num?)?.toDouble(),
         longitude: (j['longitude'] as num?)?.toDouble(),
